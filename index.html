@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J Driver Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            word-break: break-all;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>J Driver Admin Panel</h2>
+    <div class="form-group">
+        <label for="deviceId">Customer Device ID (HWID):</label>
+        <input type="text" id="deviceId" placeholder="কাস্টমারের ডিভাইস আইডি দিন">
+    </div>
+    <div class="form-group">
+        <label for="validityDays">Validity (Days):</label>
+        <input type="number" id="validityDays" value="30" placeholder="মেয়াদ (দিন)">
+    </div>
+    <button onclick="generateKey()">Generate License Key</button>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    // আপনার ফায়ারবেস রিয়েলটাইম ডাটাবেজ ইউআরএল
+    const FIREBASE_URL = "https://j-diver-panel-default-rtdb.firebaseio.com";
+
+    function generateKey() {
+        const deviceId = document.getElementById('deviceId').value.trim();
+        const days = document.getElementById('validityDays').value;
+        const resultDiv = document.getElementById('result');
+
+        if (!deviceId) {
+            alert("দয়া করে কাস্টমারের ডিভাইস আইডি (HWID) লিখুন!");
+            return;
+        }
+
+        // র্যান্ডম ইউনিক লাইসেন্স কি জেনারেট করার কোড (যেমন: JDRV-XXXX-XXXX)
+        const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const licenseKey = `JDRV-${randomStr}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        // এক্সপায়ারি ডেট ক্যালকুলেশন
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + parseInt(days));
+
+        const data = {
+            licenseKey: licenseKey,
+            deviceId: deviceId,
+            validityDays: days,
+            expiryTime: expiryDate.getTime(),
+            status: "active"
+        };
+
+        // ফায়ারবেসে ডেটা সেভ করা (Device ID কে ফোল্ডার বা কি হিসেবে ব্যবহার করে)
+        // সুরক্ষার জন্য ডিভাইস আইডির ভেতরের স্পেশাল ক্যারেক্টার রিমুভ করা হচ্ছে
+        const safeDeviceId = deviceId.replace(/[^a-zA-Z0-9]/g, "_");
+
+        fetch(`${FIREBASE_URL}/licenses/${safeDeviceId}.json`, {
+            method: 'PUT', // PUT ব্যবহার করলে নির্দিষ্ট ডিভাইস আইডির আন্ডারে ডেটা আপডেট বা সেভ হবে
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            resultDiv.style.display = "block";
+            resultDiv.innerHTML = `<b>সফলভাবে কি জেনারেট হয়েছে!</b><br><br>
+                <b>Key:</b> <span style="color:green; font-weight:bold;">${licenseKey}</span><br>
+                <b>Device ID:</b> ${deviceId}`;
+        })
+        .catch(error => {
+            alert("এরর হয়েছে: " + error);
+        });
+    }
+</script>
+
+</body>
+</html>
